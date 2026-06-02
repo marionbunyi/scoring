@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Championship Scoreboard</title>
+    <style>
+        :root {
+            --primary: #6c5ce7;
+            --success: #00b894;
+            --warning: #f1c40f;
+            --bg: #f0f3f7;
+        }
+
+        body { 
+            font-family: 'Comic Sans MS', 'Chalkboard SE', cursive, sans-serif; 
+            background: #eef2f7; 
+            margin: 0; 
+            padding: 20px; 
+        }
+
+        .container { max-width: 1500px; margin: 0 auto; }
+        h1 { text-align: center; color: var(--primary); text-shadow: 2px 2px 0px white; font-size: 2.5rem; margin-top: 0; }
+
+        /* Navigation */
+        .nav { display: flex; justify-content: center; gap: 15px; margin-bottom: 25px; }
+        .nav-btn { 
+            padding: 12px 35px; border: none; border-radius: 50px; cursor: pointer; 
+            background: white; font-weight: bold; color: var(--primary);
+            box-shadow: 0 4px 0px #ccc; transition: all 0.2s; font-size: 1.1rem;
+        }
+        .nav-btn.active { background: var(--primary); color: white; box-shadow: 0 4px 0px #4834d4; transform: translateY(2px); }
+        .rank-trigger { background: var(--warning); color: #2d3436; box-shadow: 0 4px 0px #c5a00d; }
+
+        /* Setup/Grid Styles */
+        .setup-card { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
+        textarea { width: 100%; height: 100px; border-radius: 15px; border: 2px solid #dfe6e9; padding: 15px; margin: 10px 0; box-sizing: border-box; font-size: 1rem; outline: none; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 20px; }
+        
+        .student-card { 
+            background: white; padding: 20px 15px; border-radius: 25px; text-align: center; 
+            box-shadow: 0 8px 15px rgba(0,0,0,0.1); position: relative;
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border: 6px solid transparent;
+        }
+
+        .chinese-name { font-size: 1.3rem; font-weight: 700; color: #95a5a6; display: block; margin-bottom: 2px; }
+        .english-name { font-size: 2.5rem; font-weight: 900; color: #2d3436; display: block; text-transform: uppercase; margin-bottom: 10px; line-height: 1.1; }
+        .score { font-size: 4.8rem; font-weight: 900; margin: 5px 0; line-height: 1; }
+        
+        .controls { display: flex; gap: 10px; margin-top: 15px; }
+        .btn { border: none; padding: 12px; border-radius: 15px; cursor: pointer; flex: 1; font-weight: bold; font-size: 1.8rem; }
+        .btn-add { background: var(--success); color: white; box-shadow: 0 4px 0 #009475; }
+        .btn-sub { background: #f1f2f6; color: #636e72; box-shadow: 0 4px 0 #d1d1d1; }
+
+        /* Ranking Overlay */
+        #rank-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 1000;
+        }
+        .rank-content {
+            background: white; width: 90%; max-width: 550px; padding: 30px; border-radius: 30px;
+            text-align: center; position: relative; animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        @keyframes popIn { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        
+        .rank-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 12px 20px; margin: 8px 0; border-radius: 15px; background: #f8f9fa;
+            font-size: 1.3rem; font-weight: bold;
+        }
+        .rank-1-tie { background: #fff3cd; border: 2px solid var(--warning); box-shadow: 0 0 15px rgba(241, 196, 15, 0.3); }
+        .rank-num { background: var(--primary); color: white; border-radius: 50%; width: 35px; height: 35px; display: inline-flex; align-items: center; justify-content: center; margin-right: 10px; font-size: 1rem; }
+        .rank-1-tie .rank-num { background: var(--warning); color: #2d3436; font-size: 1.2rem; transform: scale(1.2); }
+
+        .close-rank { position: absolute; top: -15px; right: -15px; background: #ff7675; color: white; border: none; border-radius: 50%; width: 45px; height: 45px; cursor: pointer; font-weight: bold; font-size: 1.2rem; }
+
+        .hidden { display: none; }
+        .pop { transform: scale(1.1); border-color: gold !important; z-index: 10; }
+
+        /* Colorful Borders */
+        .c1 { border-color: #ff7675; color: #d63031; } .c2 { border-color: #74b9ff; color: #0984e3; }
+        .c3 { border-color: #55efc4; color: #00b894; } .c4 { border-color: #ffeaa7; color: #f39c12; }
+        .c5 { border-color: #a29bfe; color: #6c5ce7; } .c6 { border-color: #fab1a0; color: #e17055; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🎒 Class Points</h1>
+
+    <div class="nav">
+        <button class="nav-btn active" id="btn-setup" onclick="showTab('setup')">⚙️ Setup</button>
+        <button class="nav-btn" id="btn-score" onclick="showTab('score')">🏆 Scoreboard</button>
+        <button class="nav-btn rank-trigger" onclick="showRanking()">👑 Winner Rank</button>
+    </div>
+
+    <div id="view-setup" class="setup-card">
+        <h3 style="margin:0">Excel Import</h3>
+        <textarea id="bulkPaste" placeholder="中文 English..."></textarea>
+        <button class="btn btn-add" style="width: auto; padding: 10px 40px; font-size: 1rem;" onclick="importNames()">Apply Names ✨</button>
+        <div id="manualList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; margin-top:20px;"></div>
+    </div>
+
+    <div id="view-score" class="hidden">
+        <div class="grid" id="scoreGrid"></div>
+        <div style="margin-top: 40px; text-align: center;">
+            <button class="nav-btn" style="color: #636e72; font-size: 0.8rem; box-shadow: none; background: transparent;" onclick="resetAllScores()">Reset All Points</button>
+        </div>
+    </div>
+</div>
+
+<div id="rank-overlay">
+    <div class="rank-content">
+        <button class="close-rank" onclick="document.getElementById('rank-overlay').style.display='none'">X</button>
+        <h2 style="color: var(--primary); margin-top: 0;">🎉 Top 10 Leaders 🎉</h2>
+        <div id="rank-list"></div>
+    </div>
+</div>
+
+<script>
+    let students = JSON.parse(localStorage.getItem('tie_rank_roster')) || 
+        Array.from({length: 30}, (_, i) => ({ id: i, zh: "", en: "", score: 0, color: (i % 6) + 1 }));
+
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    function playSound(type) {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        
+        if (type === 'fanfare') {
+            // Trumpet-like Fanfare
+            const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+            notes.forEach((freq, i) => {
+                const o = audioCtx.createOscillator();
+                const g = audioCtx.createGain();
+                o.connect(g); g.connect(audioCtx.destination);
+                o.type = 'sawtooth';
+                o.frequency.setValueAtTime(freq, audioCtx.currentTime + (i * 0.15));
+                g.gain.setValueAtTime(0, audioCtx.currentTime + (i * 0.15));
+                g.gain.linearRampToValueAtTime(0.1, audioCtx.currentTime + (i * 0.15) + 0.05);
+                g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + (i * 0.15) + 0.5);
+                o.start(audioCtx.currentTime + (i * 0.15));
+                o.stop(audioCtx.currentTime + (i * 0.15) + 0.6);
+            });
+            return;
+        }
+
+        osc.frequency.setValueAtTime(type === 'up' ? 880 : 400, audioCtx.currentTime);
+        if(type === 'up') osc.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.1);
+        gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+    }
+
+    function init() { renderManualList(); renderScoreboard(); }
+
+    function importNames() {
+        const raw = document.getElementById('bulkPaste').value;
+        const lines = raw.split(/\r?\n/).filter(line => line.trim() !== "");
+        students.forEach((s, i) => {
+            if (lines[i]) {
+                const parts = lines[i].trim().split(/[\s\t]+/);
+                s.zh = parts[0] || ""; s.en = parts.slice(1).join(" ") || "";
+            } else { s.zh = ""; s.en = ""; s.score = 0; }
+        });
+        saveAndRefresh();
+        document.getElementById('bulkPaste').value = '';
+        showTab('score');
+    }
+
+    function renderManualList() {
+        const div = document.getElementById('manualList');
+        div.innerHTML = '';
+        students.forEach((s, i) => {
+            const item = document.createElement('div');
+            item.style.display = 'flex'; item.style.gap = '5px';
+            item.innerHTML = `
+                <input type="text" style="width:35%; padding:8px; border-radius:8px; border:1px solid #ddd" placeholder="中文" value="${s.zh}" onchange="updateDetail(${i}, 'zh', this.value)">
+                <input type="text" style="width:60%; padding:8px; border-radius:8px; border:1px solid #ddd" placeholder="English" value="${s.en}" onchange="updateDetail(${i}, 'en', this.value)">
+            `;
+            div.appendChild(item);
+        });
+    }
+
+    function renderScoreboard() {
+        const grid = document.getElementById('scoreGrid');
+        grid.innerHTML = '';
+        const activeOnes = students.filter(s => s.zh !== "" || s.en !== "");
+        activeOnes.forEach((s) => {
+            const card = document.createElement('div');
+            card.className = `student-card c${s.color}`;
+            card.id = `card-${s.id}`;
+            card.innerHTML = `<div class="chinese-name">${s.zh}</div><div class="english-name">${s.en}</div><div class="score" id="score-text-${s.id}">${s.score}</div>
+                <div class="controls"><button class="btn btn-sub" onclick="changeScore(${s.id}, -1)">-</button><button class="btn btn-add" onclick="changeScore(${s.id}, 1)">+</button></div>`;
+            grid.appendChild(card);
+        });
+    }
+
+    function showRanking() {
+        const overlay = document.getElementById('rank-overlay');
+        const listDiv = document.getElementById('rank-list');
+        overlay.style.display = 'flex';
+        playSound('fanfare');
+
+        const activeOnes = [...students].filter(s => s.zh !== "" || s.en !== "").sort((a, b) => b.score - a.score);
+        
+        listDiv.innerHTML = '';
+        let currentRank = 0;
+        let lastScore = -1;
+
+        activeOnes.slice(0, 10).forEach((s, i) => {
+            // Logic for shared ranking
+            if (s.score !== lastScore) {
+                currentRank = i + 1;
+            }
+            lastScore = s.score;
+
+            const item = document.createElement('div');
+            item.className = `rank-item ${currentRank === 1 ? 'rank-1-tie' : ''}`;
+            item.innerHTML = `
+                <span><span class="rank-num">${currentRank}</span> ${s.en}</span>
+                <span style="color:var(--primary)">${s.score} pts</span>
+            `;
+            listDiv.appendChild(item);
+        });
+    }
+
+    function updateDetail(index, field, val) { students[index][field] = val; saveData(); }
+
+    function changeScore(id, delta) {
+        const s = students.find(x => x.id === id);
+        s.score += delta;
+        document.getElementById(`score-text-${id}`).innerText = s.score;
+        playSound(delta > 0 ? 'up' : 'down');
+        const card = document.getElementById(`card-${id}`);
+        card.classList.add('pop'); setTimeout(() => card.classList.remove('pop'), 200);
+        saveData();
+    }
+
+    function resetAllScores() { if(confirm("Reset points?")) { students.forEach(s => s.score = 0); saveAndRefresh(); } }
+    function saveData() { localStorage.setItem('tie_rank_roster', JSON.stringify(students)); }
+    function saveAndRefresh() { saveData(); renderManualList(); renderScoreboard(); }
+    function showTab(tab) {
+        document.getElementById('view-setup').classList.toggle('hidden', tab !== 'setup');
+        document.getElementById('view-score').classList.toggle('hidden', tab !== 'score');
+        document.getElementById('btn-setup').classList.toggle('active', tab === 'setup');
+        document.getElementById('btn-score').classList.toggle('active', tab === 'score');
+        if (tab === 'score') renderScoreboard();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+    init();
+</script>
+</body>
+</html>
